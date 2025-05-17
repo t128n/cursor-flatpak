@@ -104,7 +104,7 @@ jobs:
           
       - name: Rename Flatpak artifact
         run: |
-          mv app-x86_64.flatpak com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}.flatpak
+          mv app.flatpak com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}.flatpak
 
       - name: Create GitHub Release with gh CLI
         env:
