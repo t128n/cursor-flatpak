@@ -1,8 +1,5 @@
 name: Package Cursor as Flatpak
 on:
-  schedule:
-    # Run every day at 00:00
-    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
