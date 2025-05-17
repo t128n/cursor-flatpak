@@ -9,11 +9,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          path: /tmp
+          submodules: 'recursive'
 
       - name: Install dependencies
         run: |
-          ls -la /tmp
           sudo apt-get update
           sudo apt-get install -y curl jq
 
@@ -40,7 +39,7 @@ jobs:
       - name: Extract Cursor
         run: |
           chmod +x /tmp/cursor.AppImage
-          /tmp/cursor.AppImage --appimage-extract
+          /tmp/cursor.AppImage --appimage-extract .
 
       - name: Install Flatpak
         run: |
@@ -58,9 +57,8 @@ jobs:
 
       - name: Build Flatpak
         run: |
-          cd /tmp
           flatpak-builder --force-clean --install --user --install-deps-from=flathub \
-            build-dir manifest/com.cursor.Cursor.json
+            build-dir com.cursor.Cursor.json
 
       - name: Create release
         run: |
