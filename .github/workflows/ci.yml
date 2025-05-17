@@ -1,23 +1,19 @@
-name: Package Cursor as Flatpak
-
 on:
   workflow_dispatch:
-
+name: Package Cursor as Flatpak
 jobs:
   build-flatpak:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Needed to create releases
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-23.08
+      options: --privileged
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl jq
 
       - name: Check if new Cursor version is available
         run: |
@@ -55,40 +51,10 @@ jobs:
             echo "ERROR: squashfs-root directory DOES NOT exist after extraction attempt."
             exit 1
           fi
-
-      - name: Install Flatpak
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
-
-      - name: Add Flatpak remote
-        run: |
-          flatpak remote-add --system --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-      - name: Install Flatpak runtime
-        run: |
-          flatpak install --system --noninteractive flathub org.freedesktop.Sdk//23.08 \
-            org.freedesktop.Sdk.Extension.node18//23.08 -y
-
-      - name: Build Flatpak
-        run: |
-          flatpak-builder --force-clean \
-            --repo=build-dir/repo \
-            --install \
-            --install-deps-from=flathub \
-            build-dir com.cursor.Cursor.json
-
-      - name: Build Flatpak bundle
-        run: |
-          flatpak build-bundle \
-            build-dir/repo \
-            com.cursor.Cursor-${{ env.cursor_version }}.flatpak \
-            com.cursor.Cursor \
-            --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
-            
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create ${{ env.cursor_version }} --title "Cursor ${{ env.cursor_version }}" --notes "Release ${{ env.cursor_version }}" com.cursor.Cursor-${{ env.cursor_version }}.flatpak
-
+          
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: com.cursor.Cursor-${{ env.cursor_version }}.flatpak
+          manifest-path: com.cursor.Cursor.json
+          cache-key: flatpak-builder-${{ github.sha }}
+          branch: stable
