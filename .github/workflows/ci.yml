@@ -1,4 +1,5 @@
 name: Package Cursor as Flatpak
+
 on:
   workflow_dispatch:
 
@@ -16,25 +17,48 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl jq
 
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('**/lockfiles') }} # Using a generic key, adjust if needed
+          restore-keys: |
+            ${{ runner.os }}-apt-
+
       - name: Check if new Cursor version is available
         run: |
           response=$(curl -s "https://www.cursor.com/api/download?platform=linux-x64&releaseTrack=stable")
-          cursor_version=$(echo "$response" | jq -r '.version')
-          cursor_download_url=$(echo "$response" | jq -r '.downloadUrl')
-          
+          cursor_version_val=$(echo "$response" | jq -r '.version')
+          cursor_download_url_val=$(echo "$response" | jq -r '.downloadUrl')
+          echo "cursor_version=$cursor_version_val" >> $GITHUB_ENV
+          echo "cursor_download_url=$cursor_download_url_val" >> $GITHUB_ENV
+
           response=$(curl -s "https://api.github.com/repos/t128n/cursor-flatpak/releases/latest")
-          flatpak_version=$(echo "$response" | jq -r '.tag_name')
-          
-          if [ "$cursor_version" == "$flatpak_version" ]; then
-            echo "Cursor version $cursor_version matches Flatpak version $flatpak_version"
+          flatpak_version_val=$(echo "$response" | jq -r '.tag_name')
+          echo "flatpak_version=$flatpak_version_val" >> $GITHUB_ENV
+
+          if [ "$cursor_version_val" == "$flatpak_version_val" ]; then
+            echo "Cursor version $cursor_version_val matches Flatpak version $flatpak_version_val"
             echo "No need to build Flatpak"
             exit 0
           else
-            echo "Cursor version $cursor_version does not match Flatpak version $flatpak_version"
+            echo "Cursor version $cursor_version_val does not match Flatpak version $flatpak_version_val"
             echo "Building Flatpak"
-            echo "Downloading Cursor from $cursor_download_url..."
-            curl -L -o /tmp/cursor.AppImage "$cursor_download_url"
+            if [ -f /tmp/cursor.AppImage ]; then
+              echo "Found /tmp/cursor.AppImage (likely from cache) for version $cursor_version_val. Skipping download."
+            else
+              echo "Downloading Cursor from $cursor_download_url_val..."
+              curl -L -o /tmp/cursor.AppImage "$cursor_download_url_val"
+            fi
           fi
+
+      - name: Cache Cursor AppImage
+        uses: actions/cache@v4
+        with:
+          path: /tmp/cursor.AppImage
+          key: ${{ runner.os }}-cursor-appimage-${{ env.cursor_version }}
+          restore-keys: |
+            ${{ runner.os }}-cursor-appimage-
 
       - name: Extract AppImage and list contents
         run: |
@@ -60,12 +84,30 @@ jobs:
           flatpak install --user --noninteractive flathub org.freedesktop.Sdk//23.08 \
             org.freedesktop.Sdk.Extension.node18//23.08 -y
 
+      - name: Cache Flatpak runtime
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/flatpak
+          key: ${{ runner.os }}-flatpak-runtime-23.08-node18
+          restore-keys: |
+            ${{ runner.os }}-flatpak-runtime-
+
+      - name: Cache Flatpak Builder
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/flatpak-builder
+          key: ${{ runner.os }}-flatpak-builder-${{ hashFiles('**/com.cursor.Cursor.json') }}
+          restore-keys: |
+            ${{ runner.os }}-flatpak-builder-
+
       - name: Build Flatpak
         run: |
           flatpak-builder --force-clean --install --user --install-deps-from=flathub \
             build-dir com.cursor.Cursor.json
 
       - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create $flatpak_version --title "Cursor $cursor_version" --notes "Release $cursor_version"
+          gh release create ${{ env.cursor_version }} --title "Cursor ${{ env.cursor_version }}" --notes "Release ${{ env.cursor_version }}"
 
