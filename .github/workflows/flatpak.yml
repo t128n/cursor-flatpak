@@ -99,12 +99,12 @@ jobs:
       - name: Download Flatpak artifact
         uses: actions/download-artifact@v4
         with:
-          name: app.flatpak
+          name: app-x86_64.flatpak
           path: ./
           
       - name: Rename Flatpak artifact
         run: |
-          mv app.flatpak com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}.flatpak
+          mv app-x86_64.flatpak com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}.flatpak
 
       - name: Create GitHub Release with gh CLI
         env:
