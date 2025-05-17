@@ -36,10 +36,15 @@ jobs:
             curl -L -o /tmp/cursor.AppImage "$cursor_download_url"
           fi
 
-      - name: Extract Cursor
+      - name: Extract AppImage and list contents
         run: |
           chmod +x /tmp/cursor.AppImage
-          /tmp/cursor.AppImage --appimage-extract .
+          /tmp/cursor.AppImage --appimage-extract 
+
+          if [ ! -d "squashfs-root" ]; then
+            echo "ERROR: squashfs-root directory DOES NOT exist after extraction attempt."
+            exit 1
+          fi
 
       - name: Install Flatpak
         run: |
