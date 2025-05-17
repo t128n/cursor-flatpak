@@ -1,0 +1,71 @@
+name: Package Cursor as Flatpak
+on:
+  schedule:
+    # Run every day at 00:00
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  build-flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: /tmp
+
+      - name: Install dependencies
+        run: |
+          ls -la /tmp
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+
+      - name: Check if new Cursor version is available
+        run: |
+          response=$(curl -s "https://www.cursor.com/api/download?platform=linux-x64&releaseTrack=stable")
+          cursor_version=$(echo "$response" | jq -r '.version')
+          cursor_download_url=$(echo "$response" | jq -r '.downloadUrl')
+          
+          response=$(curl -s "https://api.github.com/repos/t128n/cursor-flatpak/releases/latest")
+          flatpak_version=$(echo "$response" | jq -r '.tag_name')
+          
+          if [ "$cursor_version" == "$flatpak_version" ]; then
+            echo "Cursor version $cursor_version matches Flatpak version $flatpak_version"
+            echo "No need to build Flatpak"
+            exit 0
+          else
+            echo "Cursor version $cursor_version does not match Flatpak version $flatpak_version"
+            echo "Building Flatpak"
+            echo "Downloading Cursor from $cursor_download_url..."
+            curl -L -o /tmp/cursor.AppImage "$cursor_download_url"
+          fi
+
+      - name: Extract Cursor
+        run: |
+          chmod +x /tmp/cursor.AppImage
+          /tmp/cursor.AppImage --appimage-extract
+
+      - name: Install Flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Add Flatpak remote
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install Flatpak runtime
+        run: |
+          flatpak install --user --noninteractive flathub org.freedesktop.Sdk//23.08 \
+            org.freedesktop.Sdk.Extension.node18//23.08 -y
+
+      - name: Build Flatpak
+        run: |
+          cd /tmp
+          flatpak-builder --force-clean --install --user --install-deps-from=flathub \
+            build-dir manifest/com.cursor.Cursor.json
+
+      - name: Create release
+        run: |
+          gh release create $flatpak_version --title "Cursor $cursor_version" --notes "Release $cursor_version"
+

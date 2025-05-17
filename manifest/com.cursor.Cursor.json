@@ -1,0 +1,58 @@
+{
+  "app-id": "com.cursor.Cursor",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "23.08",
+  "sdk": "org.freedesktop.Sdk",
+  "base": "org.electronjs.Electron2.BaseApp",
+  "base-version": "23.08",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.node18"
+  ],
+  "command": "run.sh",
+  "finish-args": [
+    "--socket=session-bus",
+    "--socket=system-bus",
+    "--socket=x11",
+    "--socket=wayland",
+    "--socket=pulseaudio",
+    "--device=dri",
+    "--share=network",
+    "--talk-name=org.freedesktop.Notifications"
+  ],
+  "modules": [
+    {
+      "name": "cursor-staging",
+      "buildsystem": "simple",
+      "build-commands": [
+        "mkdir -p /app/main/",
+        "cp -r ./usr/ /app/main/",
+        "install -Dm644 co.anysphere.cursor.png /app/share/icons/hicolor/128x128/apps/com.cursor.Cursor.png"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "squashfs-root"
+        }
+      ]
+    },
+    {
+      "name": "wrap-with-zypak",
+      "buildsystem": "simple",
+      "build-commands": [
+        "cat > run.sh << 'EOF'\n#!/bin/sh\nexec zypak-wrapper /app/main/usr/share/cursor/cursor \"$@\"\nEOF",
+        "install -Dm755 run.sh /app/bin/run.sh"
+      ],
+      "sources": []
+    },
+    {
+      "name": "desktop-integration",
+      "buildsystem": "simple",
+      "build-commands": [
+        "mkdir -p /app/share/applications",
+        "cat > /app/share/applications/com.cursor.Cursor.desktop << 'EOF'\n[Desktop Entry]\nName=Cursor\nExec=run.sh %U\nIcon=com.cursor.Cursor\nType=Application\nCategories=Utility;Development;\nStartupWMClass=Cursor\nEOF"
+      ],
+      "sources": []
+    },
+    "shared-modules/libcanberra/libcanberra.json"
+  ]
+}
