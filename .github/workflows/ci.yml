@@ -19,14 +19,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl jq
 
-      - name: Cache APT packages
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('**/lockfiles') }} # Using a generic key, adjust if needed
-          restore-keys: |
-            ${{ runner.os }}-apt-
-
       - name: Check if new Cursor version is available
         run: |
           response=$(curl -s "https://www.cursor.com/api/download?platform=linux-x64&releaseTrack=stable")
@@ -54,14 +46,6 @@ jobs:
             fi
           fi
 
-      - name: Cache Cursor AppImage
-        uses: actions/cache@v4
-        with:
-          path: /tmp/cursor.AppImage
-          key: ${{ runner.os }}-cursor-appimage-${{ env.cursor_version }}
-          restore-keys: |
-            ${{ runner.os }}-cursor-appimage-
-
       - name: Extract AppImage and list contents
         run: |
           chmod +x /tmp/cursor.AppImage
@@ -86,30 +70,18 @@ jobs:
           flatpak install --user --noninteractive flathub org.freedesktop.Sdk//23.08 \
             org.freedesktop.Sdk.Extension.node18//23.08 -y
 
-      - name: Cache Flatpak runtime
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/flatpak
-          key: ${{ runner.os }}-flatpak-runtime-23.08-node18
-          restore-keys: |
-            ${{ runner.os }}-flatpak-runtime-
-
-      - name: Cache Flatpak Builder
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/flatpak-builder
-          key: ${{ runner.os }}-flatpak-builder-${{ hashFiles('**/com.cursor.Cursor.json') }}
-          restore-keys: |
-            ${{ runner.os }}-flatpak-builder-
-
       - name: Build Flatpak
         run: |
           flatpak-builder --force-clean --install --user --install-deps-from=flathub \
             build-dir com.cursor.Cursor.json
 
+      - name: Build Flatpak bundle
+        run: |
+          flatpak build-bundle build-dir/repo com.cursor.Cursor-${{ env.cursor_version }}.flatpak com.cursor.Cursor --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create ${{ env.cursor_version }} --title "Cursor ${{ env.cursor_version }}" --notes "Release ${{ env.cursor_version }}"
+          gh release create ${{ env.cursor_version }} --title "Cursor ${{ env.cursor_version }}" --notes "Release ${{ env.cursor_version }}" com.cursor.Cursor-${{ env.cursor_version }}.flatpak
 
