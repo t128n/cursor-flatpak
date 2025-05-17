@@ -1,10 +1,9 @@
 # Cursor Flatpak
 
-*Latest Build*
-[![Cursor Flatpak](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml/badge.svg)](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml)
-
-*Automated Build*
-[![Cursor Flatpak](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml/badge.svg?event=schedule)](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml)
+| Build Type | Status |
+|------------|---------|
+| Latest | [![Cursor Flatpak](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml/badge.svg)](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml) |
+| Automated | [![Cursor Flatpak](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml/badge.svg?event=schedule)](https://github.com/t128n/cursor-flatpak/actions/workflows/flatpak.yml) |
 
 Automatic Flatpak packaging for [Cursor](https://cursor.com/), the AI-first code editor.
 
