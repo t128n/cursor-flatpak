@@ -72,7 +72,7 @@ jobs:
 
       - name: Build Flatpak
         run: |
-          flatpak-builder --force-clean --install --user --install-deps-from=flathub \
+          flatpak-builder --force-clean --install --install-deps-from=flathub \
             build-dir com.cursor.Cursor.json
 
       - name: Build Flatpak bundle
