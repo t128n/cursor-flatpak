@@ -2,7 +2,56 @@ on:
   workflow_dispatch:
 name: Package Cursor as Flatpak
 jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      cursor_version: ${{ steps.version-check.outputs.cursor_version }}
+      flatpak_version: ${{ steps.version-check.outputs.flatpak_version }}
+      needs_build: ${{ steps.version-check.outputs.needs_build }}
+      cursor_download_url: ${{ steps.version-check.outputs.cursor_download_url }}
+    steps:
+      - name: Check if new Cursor version is available
+        id: version-check
+        run: |
+          response=$(curl -s "https://www.cursor.com/api/download?platform=linux-x64&releaseTrack=stable")
+          cursor_version_val=$(echo "$response" | jq -r '.version')
+          cursor_download_url_val=$(echo "$response" | jq -r '.downloadUrl')
+          echo "cursor_version=$cursor_version_val" >> $GITHUB_OUTPUT
+          echo "cursor_download_url=$cursor_download_url_val" >> $GITHUB_OUTPUT
+
+          response=$(curl -s "https://api.github.com/repos/t128n/cursor-flatpak/releases/latest")
+          flatpak_version_val=$(echo "$response" | jq -r '.tag_name')
+          echo "flatpak_version=$flatpak_version_val" >> $GITHUB_OUTPUT
+
+          if [ "$cursor_version_val" == "$flatpak_version_val" ]; then
+            echo "Cursor version $cursor_version_val matches Flatpak version $flatpak_version_val"
+            echo "needs_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "Cursor version $cursor_version_val does not match Flatpak version $flatpak_version_val"
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+          fi
+
+  download-appimage:
+    needs: check-versions
+    if: needs.check-versions.outputs.needs_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Cursor AppImage
+        run: |
+          echo "Downloading Cursor from ${{ needs.check-versions.outputs.cursor_download_url }}..."
+          mkdir -p /tmp
+          curl -L -o /tmp/cursor.AppImage "${{ needs.check-versions.outputs.cursor_download_url }}"
+      
+      - name: Upload AppImage as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: cursor-appimage
+          path: /tmp/cursor.AppImage
+          retention-days: 1
+
   build-flatpak:
+    needs: [check-versions, download-appimage]
+    if: needs.check-versions.outputs.needs_build == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write # Needed to create releases
@@ -14,33 +63,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-
-      - name: Check if new Cursor version is available
-        run: |
-          response=$(curl -s "https://www.cursor.com/api/download?platform=linux-x64&releaseTrack=stable")
-          cursor_version_val=$(echo "$response" | jq -r '.version')
-          cursor_download_url_val=$(echo "$response" | jq -r '.downloadUrl')
-          echo "cursor_version=$cursor_version_val" >> $GITHUB_ENV
-          echo "cursor_download_url=$cursor_download_url_val" >> $GITHUB_ENV
-
-          response=$(curl -s "https://api.github.com/repos/t128n/cursor-flatpak/releases/latest")
-          flatpak_version_val=$(echo "$response" | jq -r '.tag_name')
-          echo "flatpak_version=$flatpak_version_val" >> $GITHUB_ENV
-
-          if [ "$cursor_version_val" == "$flatpak_version_val" ]; then
-            echo "Cursor version $cursor_version_val matches Flatpak version $flatpak_version_val"
-            echo "No need to build Flatpak"
-            exit 0
-          else
-            echo "Cursor version $cursor_version_val does not match Flatpak version $flatpak_version_val"
-            echo "Building Flatpak"
-            if [ -f /tmp/cursor.AppImage ]; then
-              echo "Found /tmp/cursor.AppImage (likely from cache) for version $cursor_version_val. Skipping download."
-            else
-              echo "Downloading Cursor from $cursor_download_url_val..."
-              curl -L -o /tmp/cursor.AppImage "$cursor_download_url_val"
-            fi
-          fi
+          
+      - name: Download AppImage artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: cursor-appimage
+          path: /tmp
 
       - name: Extract AppImage and list contents
         run: |
@@ -54,7 +82,41 @@ jobs:
           
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          bundle: com.cursor.Cursor-${{ env.cursor_version }}.flatpak
+          bundle: com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}.flatpak
           manifest-path: com.cursor.Cursor.json
           cache-key: flatpak-builder-${{ github.sha }}
           branch: stable
+      
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: flatpak-bundle
+          path: com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}-x86_64.flatpak
+          retention-days: 7
+          
+  create-release:
+    needs: [check-versions, build-flatpak]
+    if: needs.check-versions.outputs.needs_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download Flatpak artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: flatpak-bundle
+          path: ./
+          
+      - name: Create GitHub Release with gh CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURSOR_VERSION: ${{ needs.check-versions.outputs.cursor_version }}
+        run: |
+          ls -la
+          gh release create "$CURSOR_VERSION" \
+            --title "Cursor $CURSOR_VERSION" \
+            --notes "Cursor $CURSOR_VERSION packaged as Flatpak. Automatically generated by GitHub Actions." \
+            ./com.cursor.Cursor-$CURSOR_VERSION-x86_64.flatpak
