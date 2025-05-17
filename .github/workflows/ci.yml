@@ -100,7 +100,7 @@ jobs:
       - name: Download Flatpak artifact
         uses: actions/download-artifact@v4
         with:
-          name: com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}.flatpak
+          name: com.cursor.Cursor-${{ needs.check-versions.outputs.cursor_version }}-x86_64.flatpak
           path: ./
           
       - name: Create GitHub Release with gh CLI
