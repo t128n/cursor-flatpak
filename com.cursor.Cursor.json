@@ -52,7 +52,6 @@
         "cat > /app/share/applications/com.cursor.Cursor.desktop << 'EOF'\n[Desktop Entry]\nName=Cursor\nExec=run.sh %U\nIcon=com.cursor.Cursor\nType=Application\nCategories=Utility;Development;\nStartupWMClass=Cursor\nEOF"
       ],
       "sources": []
-    },
-    "shared-modules/libcanberra/libcanberra.json"
+    }
   ]
 }
