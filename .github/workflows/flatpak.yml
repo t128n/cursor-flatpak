@@ -1,5 +1,10 @@
 on:
   workflow_dispatch:
+    inputs:
+      force-build:
+        description: 'Force build even if versions match'
+        required: false
+        default: 'false'
   schedule:
     - cron: '0 */12 * * *'
 name: Cursor Flatpak
@@ -35,7 +40,7 @@ jobs:
 
   prepare-appimage:
     needs: check-versions
-    if: needs.check-versions.outputs.needs_build == 'true'
+    if: needs.check-versions.outputs.needs_build == 'true' || inputs.force-build == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Download Cursor AppImage
@@ -56,7 +61,7 @@ jobs:
 
   build-flatpak:
     needs: [check-versions, prepare-appimage]
-    if: needs.check-versions.outputs.needs_build == 'true'
+    if: needs.check-versions.outputs.needs_build == 'true' || inputs.force-build == 'true'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/andyholmes/flatter/gnome:master
