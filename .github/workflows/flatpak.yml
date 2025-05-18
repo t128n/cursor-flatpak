@@ -41,7 +41,7 @@ jobs:
 
   prepare-appimage:
     needs: check-versions
-    if: needs.check-versions.outputs.needs_build == 'true' || inputs.force-build == 'true'
+    if: needs.check-versions.outputs.needs_build == 'true' || inputs.force-build == true
     runs-on: ubuntu-latest
     steps:
       - name: Download Cursor AppImage
@@ -62,7 +62,7 @@ jobs:
 
   build-flatpak:
     needs: [check-versions, prepare-appimage]
-    if: needs.check-versions.outputs.needs_build == 'true' || inputs.force-build == 'true'
+    if: needs.check-versions.outputs.needs_build == 'true' || inputs.force-build == true
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/andyholmes/flatter/gnome:master
