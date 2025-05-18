@@ -2,9 +2,10 @@ on:
   workflow_dispatch:
     inputs:
       force-build:
+        type: boolean
         description: 'Force build even if versions match'
         required: false
-        default: 'false'
+        default: false
   schedule:
     - cron: '0 */12 * * *'
 name: Cursor Flatpak
