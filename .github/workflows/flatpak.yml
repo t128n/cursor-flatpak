@@ -170,7 +170,7 @@ jobs:
               echo "Asset uploaded/updated successfully to existing release $TARGET_TAG."
             else
               echo "Failed to upload asset to existing release $TARGET_TAG."
-              # Optionally, exit 1. For now, log and continue.
+              exit 1
             fi
           else
             echo "Release $TARGET_TAG does not exist. Creating new release..."
