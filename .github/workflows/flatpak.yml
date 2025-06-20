@@ -136,6 +136,10 @@ jobs:
           TARGET_FLATPAK_PATH="$DESTINATION_DIR/$TARGET_FLATPAK_NAME"
 
           mv "$SOURCE_FLATPAK_FILE" "$TARGET_FLATPAK_PATH"
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to move $SOURCE_FLATPAK_FILE to $TARGET_FLATPAK_PATH."
+            exit 1
+          fi
           echo "Moved and renamed to $TARGET_FLATPAK_PATH"
 
           echo "flatpak_path=$TARGET_FLATPAK_PATH" >> "$GITHUB_OUTPUT"
